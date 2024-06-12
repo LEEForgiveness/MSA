@@ -1,7 +1,10 @@
 package com.springcloud.gateway.security;
 
+import com.springcloud.gateway.exception.CustomException;
+import com.springcloud.gateway.exception.ResponseStatus;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
@@ -39,10 +42,22 @@ public class JwtTokenProvider {
 
 	public void validateJwtToken(String token) {
 		try {
-			Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token);
-		} catch (SignatureException | MalformedJwtException |
-				 UnsupportedJwtException | IllegalArgumentException | ExpiredJwtException jwtException) {
-			throw jwtException;
+			Jws<Claims> claimsJws = Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token);
+			String tokenType = claimsJws.getBody().get("TokenType", String.class);
+			log.info("tokenType: {}", tokenType);
+			if("refresh".equals(tokenType)) {
+				throw new CustomException(ResponseStatus.JWT_FAIL_WITH_REFRESH);
+			}
+		} catch (SignatureException exception) {
+			throw new CustomException(ResponseStatus.TOKEN_NOT_VALID);
+		} catch (MalformedJwtException exception) {
+			throw new CustomException(ResponseStatus.JWT_VALID_FAILED);
+		} catch (ExpiredJwtException exception) {
+			throw new CustomException(ResponseStatus.EXPIRED_AUTH_CODE);
+		} catch (UnsupportedJwtException exception) {
+			throw new CustomException(ResponseStatus.TOKEN_NULL);
+		} catch (IllegalArgumentException exception) {
+			throw new CustomException(ResponseStatus.JWT_VALID_FAILED);
 		}
 	}
 }
